@@ -1,0 +1,53 @@
+#version: '3.8'
+services:
+  web:
+    build: 
+      dockerfile: ./Dockerfile.web.yml
+      args: 
+        - IMAGE_VERSION_WEB=${IMAGE_VERSION_WEB:-apache}
+    image: ${IMAGE_NAME_WEB:-lamp-web}:${IMAGE_VERSION_WEB:-apache}
+    container_name: ${CONTAINER_NAME_WEB:-lamp-web}
+    restart: ${DOCKER_RESTART:-no}
+    ports:
+      - ${PORT_WEB:-80}:80
+    working_dir: ${WORKING_DIR_WEB:-/var/www/html}
+    depends_on:
+      - db
+    networks:
+      - lamp-network
+    volumes:
+      - ${SOURCE_DIR_WEB:-./src}:${WORKING_DIR_WEB:-/var/www/html}
+      # Map the .env file into the container source directory
+      - type: bind
+        source: ${ENV_FILE-_.env}
+        target: ${WORKING_DIR_WEB:-/var/www/html}/.env
+  db:
+    image: mysql:${IMAGE_VERSION_DB:-latest}
+    container_name: ${CONTAINER_NAME_DB:-lamp-db}
+    restart: ${DOCKER_RESTART:-no}
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root_pass}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-lamp_db}
+      - MYSQL_USER=${MYSQL_USER:-lamp_user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-lamp_pass}
+    networks:
+      - lamp-network
+    volumes:
+      - ${DATA_DIR_DB:-./db}:/var/lib/mysql
+      - ${INIT_DIR_DB:-./initdb}:/docker-entrypoint-initdb.d
+  phpmyadmin:
+    image: phpmyadmin:${IMAGE_VERSION_PHPMYADMIN:-latest}
+    container_name: ${CONTAINER_NAME_PHPMYADMIN:-lamp-phpmyadmin}
+    restart: ${DOCKER_RESTART:-no}
+    ports:
+      - ${PORT_PHPMYADMIN:-8080}:80
+    depends_on:
+      - db
+    networks:
+      - lamp-network
+    environment:
+      PMA_HOST: db
+
+networks:
+  lamp-network:
+    name: ${DOCKER_NETWORK:-lamp-network}
